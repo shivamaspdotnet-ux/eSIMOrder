@@ -29,6 +29,14 @@ export async function POST(request) {
   const hmacSecret = process.env.N8N_HMAC_SECRET;
 
   if (!webhookUrl || !hmacSecret) {
+    if (!webhookUrl) {
+      console.error("Missing N8N_WEBHOOK_URL");
+    }
+
+    if (!hmacSecret) {
+      console.error("Missing N8N_HMAC_SECRET");
+    }
+
     return NextResponse.json(
       { error: "Order automation is not configured" },
       { status: 500 }
