@@ -50,10 +50,10 @@ export async function POST(request) {
     esimPackage: order.esimPackage.trim(),
     orderId: order.orderId.trim()
   };
-  const body = canonicalJson(payload);
+  const signedPayload = canonicalJson(payload);
   const signature = crypto
     .createHmac("sha256", hmacSecret)
-    .update(body)
+    .update(signedPayload)
     .digest("hex");
 
   try {
@@ -61,9 +61,10 @@ export async function POST(request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Esim-Signature": `sha256=${signature}`
+        "X-Esim-Signature": `sha256=${signature}`,
+        "X-Esim-Signed-Payload": signedPayload
       },
-      body
+      body: signedPayload
     });
 
     const responseText = await response.text();
