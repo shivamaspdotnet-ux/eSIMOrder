@@ -59,48 +59,17 @@ Webhook node:
 Verify HMAC Signature node:
 
 - Use a Code node.
-- Read the `x-esim-signed-payload` header.
-- Compute HMAC-SHA256 over that header value with the same secret stored in n8n.
+- Read the request body from the Webhook node.
+- Recreate the signed payload with `JSON.stringify` and this exact key order: `customerName`, `email`, `orderId`, `country`, `package`.
+- Compute HMAC-SHA256 over that payload with the same secret stored in n8n.
 - Compare with request header `x-esim-signature`.
-- Expected header format: `sha256=<hex digest>`.
+- Expected header format: raw hex digest.
 - Reject with HTTP `401` if the signature does not match.
-- Use the verified signed payload as the order data for later workflow steps.
-
-Example Code node:
-
-```js
-const crypto = require("crypto");
-
-const input = $input.first().json;
-const headers = input.headers || {};
-const receivedSignature = headers["x-esim-signature"];
-const signedPayload = headers["x-esim-signed-payload"];
-const hmacSecret = "use-the-same-secret-as-N8N_HMAC_SECRET";
-
-if (!receivedSignature || !signedPayload) {
-  throw new Error("Missing signature headers");
-}
-
-const expectedSignature =
-  "sha256=" +
-  crypto.createHmac("sha256", hmacSecret).update(signedPayload).digest("hex");
-
-if (receivedSignature !== expectedSignature) {
-  throw new Error("Invalid signature");
-}
-
-return [
-  {
-    json: JSON.parse(signedPayload)
-  }
-];
-```
-
-Do not print or expose the real HMAC secret. In n8n, keep the secret in a secure workflow variable, credential, or environment-backed value if available.
+- Do not print or expose the real HMAC secret. In n8n, keep the secret in a secure workflow variable, credential, or environment-backed value if available.
 
 Validation node:
 
-- Require `customerName`, `email`, `orderId`, `destinationCountry`, and `esimPackage`.
+- Require `customerName`, `email`, `orderId`, `country`, and `package`.
 - Reject with HTTP `400` if any required field is missing or blank.
 
 Duplicate Order ID node:

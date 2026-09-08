@@ -45,12 +45,12 @@ export async function POST(request) {
 
   const payload = {
     customerName: order.customerName.trim(),
-    destinationCountry: order.destinationCountry.trim(),
     email: order.email.trim(),
-    esimPackage: order.esimPackage.trim(),
-    orderId: order.orderId.trim()
+    orderId: order.orderId.trim(),
+    country: order.destinationCountry.trim(),
+    package: order.esimPackage.trim()
   };
-  const signedPayload = canonicalJson(payload);
+  const signedPayload = JSON.stringify(payload);
   const signature = crypto
     .createHmac("sha256", hmacSecret)
     .update(signedPayload)
@@ -61,8 +61,7 @@ export async function POST(request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Esim-Signature": `sha256=${signature}`,
-        "X-Esim-Signed-Payload": signedPayload
+        "X-Esim-Signature": signature
       },
       body: signedPayload
     });
@@ -82,7 +81,7 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json(responseBody ?? { message: responseText });
+    return NextResponse.json(normalizeN8nResponse(responseBody, responseText));
   } catch {
     return NextResponse.json(
       { error: "n8n webhook is unavailable. Please try again later." },
@@ -105,21 +104,6 @@ function validateOrder(order) {
   return "";
 }
 
-function canonicalJson(value) {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
-  }
-
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(value);
-}
-
 function parseJsonResponse(text) {
   if (!text) {
     return null;
@@ -130,4 +114,12 @@ function parseJsonResponse(text) {
   } catch {
     return null;
   }
+}
+
+function normalizeN8nResponse(responseBody, responseText) {
+  if (responseBody?.mock) {
+    return responseBody.mock;
+  }
+
+  return responseBody ?? { message: responseText };
 }
